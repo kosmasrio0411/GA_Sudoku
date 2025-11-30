@@ -179,8 +179,8 @@ cross_by_solver = {
 
 def build_crossover_adapter(solver_name, raw_crossover):
     if solver_name == "Setup 1":
-        def adapter(p1, p2):  # single-child, no context
-            return raw_crossover(p1, p2)
+        def adapter(p1, p2, base_grid, block_pos):  # single-child, no context
+            return raw_crossover(p1, p2, base_grid, block_pos)
         return adapter
     elif solver_name == "Setup 2":
         def adapter(p1, p2, base_grid, block_pos):  # two children, with context
@@ -190,10 +190,10 @@ def build_crossover_adapter(solver_name, raw_crossover):
         def adapter(p1, p2, base_grid, block_pos):  # single-child, with context
             return raw_crossover(p1, p2, base_grid, block_pos)
         return adapter
-    # fallback
-    def adapter(p1, p2):
-        return raw_crossover(p1, p2)
-    return adapter
+    # # fallback
+    # def adapter(p1, p2):
+    #     return raw_crossover(p1, p2)
+    # return adapter
 
 # tempat menyimpan history evolusi
 if "history" not in st.session_state:
