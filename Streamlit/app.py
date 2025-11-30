@@ -274,7 +274,6 @@ if "history" not in st.session_state:
     st.session_state["history"] = []
 if "solution" not in st.session_state:
     st.session_state["solution"] = None
-
 solution = st.session_state.get("solution", None)
 if solution is None:
     # Tidak ada solusi (belum pernah run, atau run gagal)
@@ -296,6 +295,7 @@ else:
 # 5. VISUALISASI EVOLUSI
 # =======================
 if st.session_state["history"]:
+    
     st.subheader("Visualisasi Evolusi")
 
     gens = [h["gen"] for h in st.session_state["history"]]
@@ -306,44 +306,35 @@ if st.session_state["history"]:
     st.markdown(f"**Best fitness terakhir:** {last_fit} pada generasi {last_gen}")
 
     step = max(1, int(log_interval))
+    selected_gen = st.slider(
+        "Pilih generasi yang dilog",
+        min_value=gens[0],
+        max_value=gens[-1],
+        value=gens[-1],
+        step=step,
+    )
 
-    # Semua visualisasi dalam satu container untuk mengurangi layout shift
-    viz_container = st.container()
+    try:
+        idx = gens.index(selected_gen)
+    except ValueError:
+        idx = min(range(len(gens)), key=lambda i: abs(gens[i] - selected_gen))
 
-    with viz_container:
-        col1, col2 = st.columns([1, 2])
+    snap = st.session_state["history"][idx]
+    st.write(
+        f"Best individual yang tercatat di generasi {snap['gen']} "
+        f"(fitness: {snap['fitness']})"
+    )
+    render_sudoku(snap["grid"], puzzle=st.session_state["puzzle_base"])
 
-        with col1:
-            selected_gen = st.slider(
-                "Pilih generasi yang dilog",
-                min_value=gens[0],
-                max_value=gens[-1],
-                value=gens[-1],
-                step=step,
-            )
+    df = pd.DataFrame({
+        "generation": gens,
+        "best_fitness": fitnesses,
+    }).set_index("generation")
+    st.line_chart(df)
 
-            try:
-                idx = gens.index(selected_gen)
-            except ValueError:
-                idx = min(range(len(gens)), key=lambda i: abs(gens[i] - selected_gen))
-
-            snap = st.session_state["history"][idx]
-            st.write(
-                f"Best individual yang tercatat di generasi {snap['gen']} "
-                f"(fitness: {snap['fitness']})"
-            )
-            render_sudoku(snap["grid"], puzzle=st.session_state["puzzle_base"])
-
-        with col2:
-            df = pd.DataFrame({
-                "generation": gens,
-                "best_fitness": fitnesses,
-            }).set_index("generation")
-            st.line_chart(df)
-
-        st.markdown("**Ringkasan best fitness per generasi yang dilog:**")
-        summary_df = pd.DataFrame({
-            "generation": gens,
-            "best_fitness": fitnesses,
-        })
-        st.dataframe(summary_df, use_container_width=True)
+    st.markdown("**Ringkasan best fitness per generasi yang dilog:**")
+    summary_df = pd.DataFrame({
+        "generation": gens,
+        "best_fitness": fitnesses,
+    })
+    st.dataframe(summary_df, use_container_width=True)
