@@ -105,6 +105,7 @@ def render_sudoku(
     table.sudoku td span.fill  {{ color: {solution_color}; }}
     </style>
     """
+    
 
     html = ["<table class='sudoku'>"]
     for r in range(9):
