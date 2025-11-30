@@ -11,7 +11,7 @@ import algogen_setup3 as s3
 
 
 st.title("Genetic Algorithm Sudoku Solver")
-st.write("Pilih tingkat kesulitan sudoku (0 artinya kosong).")
+st.write("Pilih tingkat kesulitan sudoku")
 
 # =======================
 # 1. DEFINISI PUZZLE
@@ -209,6 +209,9 @@ def ga_callback(gen, grid_snapshot, fitness):
 # =======================
 # 4. RUN GA
 # =======================
+# =======================
+# 4. RUN GA
+# =======================
 if st.button("Run GA"):
     if crossover_name is None:
         st.error("Pilih metode crossover terlebih dahulu.")
@@ -216,31 +219,45 @@ if st.button("Run GA"):
         st.session_state["history"] = []
         base_grid = st.session_state["puzzle_base"].copy()
 
-        # seed sesuai solver
-        chosen_seed = SEED_BY_SOLVER[selected_solver_name]
-        random.seed(chosen_seed)
-        np.random.seed(chosen_seed)
+        # placeholder untuk info status
+        status_placeholder = st.empty()
 
-        # ambil raw crossover sesuai setup & pilihan user
-        raw_crossover = cross_by_solver[selected_solver_name][crossover_name]
-        adapted_crossover = build_crossover_adapter(selected_solver_name, raw_crossover)
+        with st.spinner("⏳ Menjalankan Genetic Algorithm, harap tunggu..."):
+            status_placeholder.info(
+                f"Sedang running GA (solver = {selected_solver_name}, "
+                f"crossover = {crossover_name})..."
+            )
 
-        # panggil solver, PENTING: kirim adapted_crossover
-        solution = selected_solver_func(
-            base_grid,
-            crossover_func=adapted_crossover,
-            log_interval=log_interval,
-            callback=ga_callback,
-            # max_generations=int(max_gens),  # aktifkan jika solver mendukung
-        )
+            # seed sesuai solver
+            chosen_seed = SEED_BY_SOLVER[selected_solver_name]
+            random.seed(chosen_seed)
+            np.random.seed(chosen_seed)
+
+            # ambil raw crossover sesuai setup & pilihan user
+            raw_crossover = cross_by_solver[selected_solver_name][crossover_name]
+            adapted_crossover = build_crossover_adapter(selected_solver_name, raw_crossover)
+
+            # panggil solver, PENTING: kirim adapted_crossover
+            solution = selected_solver_func(
+                base_grid,
+                crossover_func=adapted_crossover,
+                log_interval=log_interval,
+                callback=ga_callback,
+                # max_generations=int(max_gens),  # aktifkan jika solver mendukung
+            )
+
+        # keluar dari with st.spinner → spinner hilang
+        status_placeholder.empty()  # bersihkan pesan info
 
         if solution is None:
             st.warning("GA selesai, tetapi tidak menemukan solusi yang valid.")
         else:
             st.success(
-                f"GA selesai (seed = {chosen_seed}, crossover = {crossover_name}, solver = {selected_solver_name})."
+                f"GA selesai (seed = {chosen_seed}, crossover = {crossover_name}, "
+                f"solver = {selected_solver_name})."
             )
             render_sudoku(solution, title="Solution", puzzle=st.session_state["puzzle_base"])
+
 
 # =======================
 # 5. VISUALISASI EVOLUSI
