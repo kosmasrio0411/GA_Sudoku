@@ -209,9 +209,6 @@ def ga_callback(gen, grid_snapshot, fitness):
 # =======================
 # 4. RUN GA
 # =======================
-# =======================
-# 4. RUN GA
-# =======================
 if st.button("Run GA"):
     if crossover_name is None:
         st.error("Pilih metode crossover terlebih dahulu.")
@@ -247,16 +244,52 @@ if st.button("Run GA"):
             )
 
         # keluar dari with st.spinner → spinner hilang
-        status_placeholder.empty()  # bersihkan pesan info
+        status_placeholder.empty()
 
-        if solution is None:
-            st.warning("GA selesai, tetapi tidak menemukan solusi yang valid.")
-        else:
-            st.success(
-                f"GA selesai (seed = {chosen_seed}, crossover = {crossover_name}, "
-                f"solver = {selected_solver_name})."
-            )
-            render_sudoku(solution, title="Solution", puzzle=st.session_state["puzzle_base"])
+        # SIMPAN hasil ke session_state agar tetap ada saat slider digeser
+        st.session_state["solution"] = solution
+
+# =======================
+# 4b. TAMPILKAN SOLUSI JIKA SUDAH ADA
+# =======================
+current_config = {
+    "difficulty": difficulty,
+    "solver": selected_solver_name,
+    "crossover": crossover_name,
+}
+
+if "last_config" not in st.session_state:
+    st.session_state["last_config"] = current_config
+    st.session_state["history"] = []
+    st.session_state["solution"] = None
+else:
+    if st.session_state["last_config"] != current_config:
+        # config berubah → buang riwayat & solusi lama
+        st.session_state["history"] = []
+        st.session_state["solution"] = None
+        st.session_state["last_config"] = current_config
+
+# jaga-jaga kalau key belum ada
+if "history" not in st.session_state:
+    st.session_state["history"] = []
+if "solution" not in st.session_state:
+    st.session_state["solution"] = None
+
+solution = st.session_state.get("solution", None)
+if solution is None:
+    # Tidak ada solusi (belum pernah run, atau run gagal)
+    # boleh didiamkan saja tanpa pesan,
+    # atau kalau mau, tambahkan hint kecil:
+    # st.info("Tekan 'Run GA' untuk mencari solusi.")
+    pass
+else:
+    # PENTING: ini adalah blok yang ingin kamu PERTAHANKAN
+    chosen_seed = SEED_BY_SOLVER[selected_solver_name]
+    st.success(
+        f"GA selesai (seed = {chosen_seed}, crossover = {crossover_name}, "
+        f"solver = {selected_solver_name})."
+    )
+    render_sudoku(solution, title="Solution", puzzle=st.session_state["puzzle_base"])
 
 
 # =======================
@@ -273,35 +306,44 @@ if st.session_state["history"]:
     st.markdown(f"**Best fitness terakhir:** {last_fit} pada generasi {last_gen}")
 
     step = max(1, int(log_interval))
-    selected_gen = st.slider(
-        "Pilih generasi yang dilog",
-        min_value=gens[0],
-        max_value=gens[-1],
-        value=gens[-1],
-        step=step,
-    )
 
-    try:
-        idx = gens.index(selected_gen)
-    except ValueError:
-        idx = min(range(len(gens)), key=lambda i: abs(gens[i] - selected_gen))
+    # Semua visualisasi dalam satu container untuk mengurangi layout shift
+    viz_container = st.container()
 
-    snap = st.session_state["history"][idx]
-    st.write(
-        f"Best individual yang tercatat di generasi {snap['gen']} "
-        f"(fitness: {snap['fitness']})"
-    )
-    render_sudoku(snap["grid"], puzzle=st.session_state["puzzle_base"])
+    with viz_container:
+        col1, col2 = st.columns([1, 2])
 
-    df = pd.DataFrame({
-        "generation": gens,
-        "best_fitness": fitnesses,
-    }).set_index("generation")
-    st.line_chart(df)
+        with col1:
+            selected_gen = st.slider(
+                "Pilih generasi yang dilog",
+                min_value=gens[0],
+                max_value=gens[-1],
+                value=gens[-1],
+                step=step,
+            )
 
-    st.markdown("**Ringkasan best fitness per generasi yang dilog:**")
-    summary_df = pd.DataFrame({
-        "generation": gens,
-        "best_fitness": fitnesses,
-    })
-    st.dataframe(summary_df, use_container_width=True)
+            try:
+                idx = gens.index(selected_gen)
+            except ValueError:
+                idx = min(range(len(gens)), key=lambda i: abs(gens[i] - selected_gen))
+
+            snap = st.session_state["history"][idx]
+            st.write(
+                f"Best individual yang tercatat di generasi {snap['gen']} "
+                f"(fitness: {snap['fitness']})"
+            )
+            render_sudoku(snap["grid"], puzzle=st.session_state["puzzle_base"])
+
+        with col2:
+            df = pd.DataFrame({
+                "generation": gens,
+                "best_fitness": fitnesses,
+            }).set_index("generation")
+            st.line_chart(df)
+
+        st.markdown("**Ringkasan best fitness per generasi yang dilog:**")
+        summary_df = pd.DataFrame({
+            "generation": gens,
+            "best_fitness": fitnesses,
+        })
+        st.dataframe(summary_df, use_container_width=True)
